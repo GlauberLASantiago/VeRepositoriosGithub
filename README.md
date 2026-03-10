@@ -32,7 +32,7 @@ Como este projeto é estático e não necessita de um servidor back-end ou de um
 
 Clone este repositório para a sua máquina local:
 
-git clone [https://github.com/SEU_UTILIZADOR/SEU_REPOSITORIO.git](https://github.com/SEU_UTILIZADOR/SEU_REPOSITORIO.git)
+git clone [https://github.com/GlauberLASantiago/SEU_REPOSITORIO.git](https://github.com/GlauberLASantiago/SEU_REPOSITORIO.git)
 
 
 Abra o ficheiro index.html diretamente em qualquer navegador web moderno.
@@ -47,4 +47,6 @@ Este projeto consome a API Pública do GitHub. Não é necessária autenticaçã
 
 Contribuições, problemas (issues) e pedidos de novas funcionalidades (pull requests) são muito bem-vindos! Sinta-se à vontade para ajudar a melhorar este projeto.
 
-Criado com dedicação para facilitar a exploração de projetos fantásticos na web.
+👨‍💻 Autor
+
+Elaborado por GlauberLASantiago.
