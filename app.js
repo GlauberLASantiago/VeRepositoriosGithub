@@ -3,6 +3,7 @@
 const byId = id => document.getElementById(id);
 const account = byId("account");
 const filter = byId("filter");
+const missingOnly = byId("missing-only");
 const order = byId("order");
 const results = byId("results");
 const statusLine = byId("status");
@@ -13,6 +14,8 @@ let request;
 let repos = [];
 let owner = "";
 let feedbackAction;
+const cards = new Map();
+let coverUpdateFrame;
 
 function readPreference(key) {
   try { return localStorage.getItem(key); } catch { return null; }
@@ -60,14 +63,112 @@ function normalize(text) {
   return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
 
+function siteAddress(repo) {
+  const host = repo.owner.login.toLowerCase() + ".github.io";
+  return "https://" + host + "/" + (repo.name.toLowerCase() === host ? "" : encodeURIComponent(repo.name) + "/");
+}
+
+function webAddress(value, base) {
+  try {
+    const url = new URL(value, base);
+    if (["https:", "http:"].includes(url.protocol) && !url.username && !url.password) return url.href;
+  } catch { /* Endereço inválido informado pelo site. */ }
+  return null;
+}
+
+async function readCover(repo, signal) {
+  const response = await fetch(siteAddress(repo), {
+    credentials: "omit", referrerPolicy: "no-referrer",
+    signal: AbortSignal.any([signal, AbortSignal.timeout(15000)])
+  });
+  if (!response.ok || !/text\/html|application\/xhtml\+xml/i.test(response.headers.get("content-type") || "")) {
+    throw new Error("Página HTML indisponível");
+  }
+  // O template mantém o HTML externo inerte enquanto lemos os metadados.
+  const template = document.createElement("template");
+  template.innerHTML = await response.text();
+  const html = template.content;
+  const base = webAddress(html.querySelector("base[href]")?.getAttribute("href") || response.url, response.url) || response.url;
+  const tags = Array.from(html.querySelectorAll("meta[property], meta[name]"));
+  const keys = ["og:image:secure_url", "og:image", "og:image:url", "twitter:image", "twitter:image:src"];
+  const values = keys.flatMap(key => tags.filter(tag =>
+    [tag.getAttribute("property"), tag.name].some(name => name?.trim().toLowerCase() === key)
+  ).map(tag => tag.content.trim()).filter(Boolean));
+  const images = [...new Set(values.map(value => webAddress(value, base)).filter(Boolean))];
+  return { state: images.length ? "found" : values.length ? "unknown" : "missing", images };
+}
+
+function updateCover(card, repo) {
+  const box = card.querySelector(".cover");
+  const label = box.querySelector(".cover-label");
+  const cover = repo.cover;
+  const labels = { pending: "Verificando capa…", missing: "Sem capa", unknown: "Não foi possível verificar" };
+  label.hidden = cover.state === "found";
+  label.textContent = labels[cover.state] || "";
+  if (cover.state !== "found") return;
+  const image = document.createElement("img");
+  image.alt = "";
+  image.loading = "lazy";
+  image.decoding = "async";
+  image.referrerPolicy = "no-referrer";
+  let candidate = 0;
+  image.onerror = () => {
+    if (++candidate < cover.images.length) {
+      image.src = cover.images[candidate];
+      return;
+    }
+    image.remove();
+    cover.state = "unknown";
+    updateCover(card, repo);
+    if (cards.get(repo) === card) scheduleCoverUpdate();
+  };
+  image.src = cover.images[0];
+  box.append(image);
+}
+
+function updateCoverSummary() {
+  const summary = byId("cover-summary");
+  summary.hidden = !repos.length;
+  const counts = { found: 0, missing: 0, unknown: 0, pending: 0 };
+  for (const repo of repos) counts[repo.cover.state]++;
+  const parts = [counts.found + " com capa", counts.missing + " sem capa"];
+  if (counts.unknown) parts.push(counts.unknown + " sem verificação");
+  if (counts.pending) parts.push("Verificando " + counts.pending + "…");
+  summary.textContent = parts.join(" · ");
+}
+
+function scheduleCoverUpdate() {
+  if (coverUpdateFrame) return;
+  coverUpdateFrame = requestAnimationFrame(() => {
+    coverUpdateFrame = 0;
+    if (missingOnly.checked) render();
+    else updateCoverSummary();
+  });
+}
+
+async function scanCovers(items, signal) {
+  const queue = [...items].sort((a, b) => b.updated_at.localeCompare(a.updated_at)).values();
+  async function worker() {
+    for (const repo of queue) {
+      if (signal.aborted) return;
+      try { repo.cover = await readCover(repo, signal); }
+      catch { repo.cover = { state: "unknown" }; }
+      if (signal.aborted) return;
+      const card = cards.get(repo);
+      if (card) updateCover(card, repo);
+      scheduleCoverUpdate();
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(5, items.length) }, worker));
+}
+
 function buildCard(repo) {
+  if (cards.has(repo)) return cards.get(repo);
   const card = byId("card").content.firstElementChild.cloneNode(true);
   const login = repo.owner.login;
-  const base = "https://" + login.toLowerCase() + ".github.io/";
-  const root = repo.name.toLowerCase() === login.toLowerCase() + ".github.io";
   const site = card.querySelector(".site");
   site.textContent = repo.name;
-  site.href = root ? base : base + encodeURIComponent(repo.name) + "/";
+  site.href = siteAddress(repo);
   site.setAttribute("aria-label", "Abrir site " + repo.name);
   const code = card.querySelector(".code");
   code.href = "https://github.com/" + encodeURIComponent(login) + "/" + encodeURIComponent(repo.name);
@@ -78,25 +179,41 @@ function buildCard(repo) {
   stars.textContent = "☆ " + repo.stargazers_count;
   stars.setAttribute("aria-label", repo.stargazers_count + " estrelas");
   card.querySelector(".date").textContent = "Atualizado em " + dateFormat.format(new Date(repo.updated_at));
+  cards.set(repo, card);
+  updateCover(card, repo);
   return card;
 }
 
 function render() {
   const term = normalize(filter.value);
-  const visible = repos.filter(repo => normalize(repo.name + " " + (repo.description || "")).includes(term));
+  const visible = repos.filter(repo => (!missingOnly.checked || repo.cover.state === "missing") &&
+    normalize(repo.name + " " + (repo.description || "")).includes(term));
   visible.sort((a, b) => {
     if (order.value === "az") return nameOrder.compare(a.name, b.name);
     if (order.value === "za") return nameOrder.compare(b.name, a.name);
     return order.value === "old" ? a.updated_at.localeCompare(b.updated_at) : b.updated_at.localeCompare(a.updated_at);
   });
   const total = repos.length + (repos.length === 1 ? " site" : " sites");
-  statusLine.textContent = (term ? visible.length + " de " : "") + total + " de @" + owner;
-  results.replaceChildren(...visible.map(buildCard));
+  statusLine.textContent = (term || missingOnly.checked ? visible.length + " de " : "") + total + " de @" + owner;
+  updateCoverSummary();
+  // Mantém o foco e as imagens já carregadas quando a verificação adiciona resultados.
+  const visibleCards = visible.map(buildCard);
+  const keep = new Set(visibleCards);
+  for (const card of Array.from(results.children)) {
+    if (!keep.has(card)) card.remove();
+  }
+  visibleCards.forEach((card, index) => {
+    const current = results.children[index];
+    if (current !== card) results.insertBefore(card, current || null);
+  });
   if (!repos.length) {
     feedback("Este perfil ainda não tem repositórios públicos com GitHub Pages ativo.");
+  } else if (!visible.length && missingOnly.checked && repos.some(repo => repo.cover.state === "pending")) {
+    feedback("Buscando sites sem capa…");
   } else if (!visible.length) {
     feedback("Nenhum site corresponde ao filtro.", "Limpar filtro", () => {
       filter.value = "";
+      missingOnly.checked = false;
       render();
       filter.focus();
     });
@@ -124,6 +241,11 @@ async function search(login) {
   const controller = new AbortController();
   request = controller;
   repos = [];
+  cards.clear();
+  cancelAnimationFrame(coverUpdateFrame);
+  coverUpdateFrame = 0;
+  missingOnly.checked = false;
+  byId("cover-summary").hidden = true;
   filter.value = "";
   results.replaceChildren();
   feedback();
@@ -147,11 +269,13 @@ async function search(login) {
     } while (hasNext);
     owner = canonicalLogin;
     repos = collected;
+    for (const repo of repos) repo.cover = { state: "pending" };
     const profile = byId("profile");
     profile.href = "https://github.com/" + encodeURIComponent(owner);
     profile.hidden = false;
     byId("tools").hidden = !repos.length;
     render();
+    scanCovers(repos, controller.signal);
     if (location.protocol === "https:" || location.protocol === "http:") {
       const url = new URL(location.href);
       url.searchParams.set("perfil", owner);
@@ -181,6 +305,7 @@ byId("search").addEventListener("submit", event => {
   submitSearch();
 });
 filter.addEventListener("input", render);
+missingOnly.addEventListener("change", render);
 order.addEventListener("change", render);
 
 account.value = new URLSearchParams(location.search).get("perfil") || defaultAccount;

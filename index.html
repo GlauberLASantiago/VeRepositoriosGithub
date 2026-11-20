@@ -47,13 +47,19 @@
           <button type="button" id="grid" aria-pressed="true">Grade</button>
           <button type="button" id="list" aria-pressed="false">Lista</button>
         </div>
+        <label class="cover-filter"><input type="checkbox" id="missing-only"> Mostrar só os sem capa</label>
       </div>
+      <p id="cover-summary" hidden></p>
       <div id="feedback" class="feedback" hidden><p id="message"></p><button class="quiet" id="action" hidden></button></div>
       <div id="results" class="results"></div>
     </section>
   </main>
   <template id="card">
     <article class="card">
+      <div class="cover">
+        <span class="cover-symbol" aria-hidden="true">&lt;/&gt;</span>
+        <span class="cover-label">Verificando capa…</span>
+      </div>
       <div class="card-text">
         <div class="meta"><span class="lang"></span><span class="stars"></span></div>
         <h3><a class="site" target="_blank" rel="noopener noreferrer"></a></h3>
