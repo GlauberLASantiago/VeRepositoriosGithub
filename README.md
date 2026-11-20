@@ -1,52 +1,28 @@
-🌐 Visualizador de GitHub Pages
+# Visualizador de GitHub Pages
 
-Uma aplicação web simples, rápida e elegante para descobrir e aceder aos sites publicados (GitHub Pages) de qualquer utilizador do GitHub.
+Encontre os sites publicados nos repositórios públicos de uma pessoa ou organização. [Abrir o visualizador](https://glauberlasantiago.github.io/VeRepositoriosGithub/)
 
-✨ Funcionalidades
+## Como usar
 
-Pesquisa de Utilizadores: Digite o nome de qualquer utilizador do GitHub para encontrar automaticamente todos os seus sites publicados.
+1. Digite um nome de usuário, um `@usuário` ou o endereço de um perfil do GitHub e selecione **Buscar sites**.
+2. Filtre os resultados pelo nome ou pela descrição. A busca aceita palavras com ou sem acento. Você também pode ordenar por nome ou atualização e alternar entre grade e lista.
+3. Clique no nome do site para visitá-lo ou em **Ver código** para abrir o repositório. Para compartilhar o catálogo de um perfil, copie o endereço do navegador após a busca.
 
-Filtros Inteligentes: Pesquisa interna em tempo real para filtrar os repositórios carregados pelo nome ou pela descrição.
+O visualizador lembra o tema e a visualização escolhidos neste navegador.
 
-Ordenação Personalizada: Organize os resultados por data de atualização (mais recentes/antigos) ou por ordem alfabética (A-Z/Z-A).
+## Executar localmente
 
-Visualização Flexível: Alterne com um clique entre a vista de Grelha (cartões) e a vista de Lista.
+```sh
+git clone https://github.com/GlauberLASantiago/VeRepositoriosGithub.git
+cd VeRepositoriosGithub
+```
 
-Modo Escuro / Claro: Suporte completo para tema escuro (Dark Mode), com memorização automática da preferência do utilizador no navegador.
+Abra `index.html` no navegador. Para testar o compartilhamento por URL, sirva a pasta por HTTP. Com Python instalado, execute `python -m http.server 8000` e acesse `http://localhost:8000`.
 
-Design Responsivo: Interface moderna construída, adaptável a ecrãs de telemóveis, tablets e computadores.
+O projeto usa HTML, CSS e JavaScript estáticos. O catálogo consulta a API pública do GitHub, percorre as páginas de repositórios e seleciona os que têm `has_pages` ativo. Os links usam o endereço padrão do GitHub Pages. As buscas estão sujeitas ao limite de consultas anônimas da API.
 
-🚀 Tecnologias Utilizadas
+## Contribuições
 
-HTML5 e JavaScript (Vanilla)
+Sugestões, relatos de problemas e pull requests são bem-vindos.
 
-Tailwind CSS (via CDN) para a estilização e responsividade
-
-FontAwesome para os ícones
-
-GitHub REST API para recolha dinâmica dos dados dos repositórios
-
-🛠️ Como Utilizar
-
-Como este projeto é estático e não necessita de um servidor back-end ou de um processo de compilação (build), a sua utilização é muito simples:
-
-Clone este repositório para a sua máquina local:
-
-git clone [https://github.com/GlauberLASantiago/SEU_REPOSITORIO.git](https://github.com/GlauberLASantiago/SEU_REPOSITORIO.git)
-
-
-Abra o ficheiro index.html diretamente em qualquer navegador web moderno.
-
-Digite um nome de utilizador do GitHub na barra de pesquisa principal e comece a explorar!
-
-💡 Sobre a API
-
-Este projeto consome a API Pública do GitHub. Não é necessária autenticação para uso básico, mas está sujeito aos limites de taxa (rate limits) padrão da API para requisições não autenticadas.
-
-🤝 Contribuições
-
-Contribuições, problemas (issues) e pedidos de novas funcionalidades (pull requests) são muito bem-vindos! Sinta-se à vontade para ajudar a melhorar este projeto.
-
-👨‍💻 Autor
-
-Elaborado por GlauberLASantiago.
+Elaborado por [GlauberLASantiago](https://github.com/GlauberLASantiago).
