@@ -47,7 +47,8 @@
           <button type="button" id="grid" aria-pressed="true">Grade</button>
           <button type="button" id="list" aria-pressed="false">Lista</button>
         </div>
-        <label class="cover-filter"><input type="checkbox" id="missing-only"> Mostrar só os sem capa</label>
+        <button class="quiet" type="button" id="toggle-covers" aria-expanded="false" aria-controls="results cover-filter cover-summary">Exibir capas</button>
+        <label class="cover-filter" id="cover-filter" hidden><input type="checkbox" id="missing-only"> Mostrar só os sem capa</label>
       </div>
       <p id="cover-summary" hidden></p>
       <div id="feedback" class="feedback" hidden><p id="message"></p><button class="quiet" id="action" hidden></button></div>
@@ -56,7 +57,7 @@
   </main>
   <template id="card">
     <article class="card">
-      <div class="cover">
+      <div class="cover" hidden>
         <span class="cover-symbol" aria-hidden="true">&lt;/&gt;</span>
         <span class="cover-label">Verificando capa…</span>
       </div>

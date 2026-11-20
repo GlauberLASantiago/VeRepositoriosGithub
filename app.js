@@ -16,6 +16,7 @@ let owner = "";
 let feedbackAction;
 const cards = new Map();
 let coverUpdateFrame;
+let coverRequest;
 
 function readPreference(key) {
   try { return localStorage.getItem(key); } catch { return null; }
@@ -100,6 +101,16 @@ async function readCover(repo, signal) {
 
 function updateCover(card, repo) {
   const box = card.querySelector(".cover");
+  box.hidden = !coverRequest;
+  if (box.hidden) {
+    const image = box.querySelector("img");
+    if (image) {
+      image.onerror = null;
+      image.removeAttribute("src");
+      image.remove();
+    }
+    return;
+  }
   const label = box.querySelector(".cover-label");
   const cover = repo.cover;
   const labels = { pending: "Verificando capa…", missing: "Sem capa", unknown: "Não foi possível verificar" };
@@ -113,6 +124,7 @@ function updateCover(card, repo) {
   image.referrerPolicy = "no-referrer";
   let candidate = 0;
   image.onerror = () => {
+    if (!coverRequest || cards.get(repo) !== card) return;
     if (++candidate < cover.images.length) {
       image.src = cover.images[candidate];
       return;
@@ -128,7 +140,8 @@ function updateCover(card, repo) {
 
 function updateCoverSummary() {
   const summary = byId("cover-summary");
-  summary.hidden = !repos.length;
+  summary.hidden = !coverRequest || !repos.length;
+  if (summary.hidden) return;
   const counts = { found: 0, missing: 0, unknown: 0, pending: 0 };
   for (const repo of repos) counts[repo.cover.state]++;
   const parts = [counts.found + " com capa", counts.missing + " sem capa"];
@@ -151,9 +164,11 @@ async function scanCovers(items, signal) {
   async function worker() {
     for (const repo of queue) {
       if (signal.aborted) return;
-      try { repo.cover = await readCover(repo, signal); }
-      catch { repo.cover = { state: "unknown" }; }
+      let cover;
+      try { cover = await readCover(repo, signal); }
+      catch { cover = { state: "unknown" }; }
       if (signal.aborted) return;
+      repo.cover = cover;
       const card = cards.get(repo);
       if (card) updateCover(card, repo);
       scheduleCoverUpdate();
@@ -161,6 +176,23 @@ async function scanCovers(items, signal) {
   }
   await Promise.all(Array.from({ length: Math.min(5, items.length) }, worker));
 }
+
+function setCoversVisible(visible) {
+  coverRequest?.abort();
+  coverRequest = visible ? new AbortController() : null;
+  const button = byId("toggle-covers");
+  button.textContent = visible ? "Ocultar capas" : "Exibir capas";
+  button.setAttribute("aria-expanded", String(visible));
+  byId("cover-filter").hidden = !visible;
+  missingOnly.checked = false;
+  for (const [repo, card] of cards) updateCover(card, repo);
+  if (visible) scanCovers(repos.filter(repo => repo.cover.state === "pending"), coverRequest.signal);
+}
+
+byId("toggle-covers").addEventListener("click", () => {
+  setCoversVisible(!coverRequest);
+  render();
+});
 
 function buildCard(repo) {
   if (cards.has(repo)) return cards.get(repo);
@@ -180,7 +212,7 @@ function buildCard(repo) {
   stars.setAttribute("aria-label", repo.stargazers_count + " estrelas");
   card.querySelector(".date").textContent = "Atualizado em " + dateFormat.format(new Date(repo.updated_at));
   cards.set(repo, card);
-  updateCover(card, repo);
+  if (coverRequest) updateCover(card, repo);
   return card;
 }
 
@@ -244,7 +276,7 @@ async function search(login) {
   cards.clear();
   cancelAnimationFrame(coverUpdateFrame);
   coverUpdateFrame = 0;
-  missingOnly.checked = false;
+  setCoversVisible(false);
   byId("cover-summary").hidden = true;
   filter.value = "";
   results.replaceChildren();
@@ -275,7 +307,6 @@ async function search(login) {
     profile.hidden = false;
     byId("tools").hidden = !repos.length;
     render();
-    scanCovers(repos, controller.signal);
     if (location.protocol === "https:" || location.protocol === "http:") {
       const url = new URL(location.href);
       url.searchParams.set("perfil", owner);

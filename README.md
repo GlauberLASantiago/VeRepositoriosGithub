@@ -12,7 +12,7 @@ O visualizador lembra o tema e a visualização escolhidos neste navegador.
 
 ### Ver quais sites precisam de capa
 
-Ao abrir um perfil, o catálogo consulta as páginas publicadas e procura a imagem de compartilhamento indicada em Open Graph ou, como alternativa, no Twitter Card. Os cartões ganham suas capas conforme as consultas terminam. Você pode continuar pesquisando ou ordenando os sites durante a verificação.
+Cada perfil abre com as capas ocultas. Clique em **Exibir capas** para consultar as páginas publicadas e mostrar as imagens de compartilhamento indicadas em Open Graph ou no Twitter Card. Você pode continuar pesquisando ou ordenando os sites durante a verificação. **Ocultar capas** volta à visualização compacta e interrompe a verificação. Se você exibir as capas novamente no mesmo catálogo, a busca continua de onde parou.
 
 Marque **Mostrar só os sem capa** para listar as páginas que puderam ser lidas e não indicam imagem. Elas recebem a arte padrão do catálogo. Se o site estiver indisponível, bloquear a leitura pelo navegador ou indicar uma imagem que falhe ao carregar, o cartão mostra **Não foi possível verificar** e fica fora desse filtro. A verificação lê as páginas públicas e não altera os projetos.
 
